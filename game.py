@@ -1,0 +1,576 @@
+import pygame
+import sys
+from background import Background
+from player import Player
+from arrow import Arrow
+from song import Song
+
+SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 700
+
+class Game:
+    def __init__(self):
+        pygame.init()
+        pygame.mixer.init()
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption("DDR Game")
+        self.clock = pygame.time.Clock()
+
+        self.state = "menu"
+        self.bg = Background("images/background.jpg")
+        self.player = Player()
+
+        # 20개 노래 목록
+        self.songs = [
+            Song("CANON D", "music/song1.mp3", 2, "images/bg_song1.jpg"),
+            Song("Beethoven Virus", "music/song2.mp3", 3, "images/bg_song2.jpg"),
+            Song("Get Up", "music/song3.mp3", 5, "images/bg_song3.jpg"),
+            Song("Can Can", "music/song4.mp3", 4, "images/bg_song4.jpg"),
+            Song("Legends Never Die", "music/song5.mp3", 3, "images/bg_song5.jpg"),
+            Song("Dynamite", "music/song6.mp3", 4, "images/bg_song6.jpg"),
+            Song("LOVE DIVE", "music/song7.mp3", 5, "images/bg_song7.jpg"),
+            Song("Kitsch", "music/song8.mp3", 6, "images/bg_song8.jpg"),
+            Song("Whiplash", "music/song9.mp3", 7, "images/bg_song9.jpg"),
+            Song("Spicy", "music/song10.mp3", 8, "images/bg_song10.jpg"),
+            Song("It Was Summer", "music/song11.mp3", 3, "images/bg_song11.jpg"),
+            Song("Silver Scrapes", "music/song12.mp3", 4, "images/bg_song12.jpg"),
+            Song("Last Christmas", "music/song13.mp3", 5, "images/bg_song13.jpg"),
+            Song("Love Never Felt So Good", "music/song14.mp3", 4, "images/bg_song14.jpg"),
+            Song("HAPPY", "music/song15.mp3", 6, "images/bg_song15.jpg"),
+            Song("Because It’s Christmas", "music/song16.mp3", 7, "images/bg_song16.jpg"),
+            Song("Winter Confession", "music/song17.mp3", 5, "images/bg_song17.jpg"),
+            Song("Thank You for Being Born", "music/song18.mp3", 8, "images/bg_song18.jpg"),
+            Song("Soda Pop", "music/song19.mp3", 9, "images/bg_song19.jpg"),
+            Song("HOME SWEET HOME", "music/song20.mp3", 10, "images/bg_song20.jpg"),
+        ]
+        
+        # 판정 라인 이미지 로드 및 리사이즈
+        self.judgement_images = {
+            "left": pygame.transform.scale(
+                pygame.image.load("images/left.png"), 
+                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+            ),
+            "down": pygame.transform.scale(
+                pygame.image.load("images/down.png"), 
+                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+            ),
+            "up": pygame.transform.scale(
+                pygame.image.load("images/up.png"), 
+                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+            ),
+            "right": pygame.transform.scale(
+                pygame.image.load("images/right.png"), 
+                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+            ),
+        }
+        
+        self.current_song = None
+        self.current_difficulty = None
+        self.current_speed = 1
+        self.arrows = []
+        self.timer = 0
+        self.spawn_counter = 0
+        self.pattern_index = 0
+        self.current_pattern = []
+        self.song_end_timer = -1
+        
+        self.selected_song_index = 0
+        self.selected_difficulty_index = 0
+        self.selected_speed_index = 0
+        
+        # 곡 선택 화면용 배경 이미지 캐시
+        self.song_backgrounds = {}
+        
+        # 미리듣기용 변수
+        self.preview_song_index = -1  # 현재 재생 중인 곡 인덱스
+
+    def load_song_background(self, index):
+        """곡 배경 이미지 로드 (캐싱)"""
+        if index not in self.song_backgrounds:
+            try:
+                img = pygame.image.load(self.songs[index].background_image)
+                self.song_backgrounds[index] = pygame.transform.scale(img, (SCREEN_WIDTH, SCREEN_HEIGHT))
+            except:
+                # 이미지 로드 실패 시 기본 배경
+                self.song_backgrounds[index] = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+                self.song_backgrounds[index].fill((30, 30, 50))
+        return self.song_backgrounds[index]
+
+    def main_menu(self):
+        font_title = pygame.font.SysFont(None, 100)
+        font_sub = pygame.font.SysFont(None, 50)
+        
+        self.screen.fill((20, 20, 40))
+        
+        title = font_title.render("♪ DDR GAME ♪", True, (255, 100, 255))
+        subtitle = font_sub.render("Press ENTER to Start", True, (255, 255, 255))
+        
+        self.screen.blit(title, (title.get_rect(center=(SCREEN_WIDTH//2, 250))))
+        self.screen.blit(subtitle, (subtitle.get_rect(center=(SCREEN_WIDTH//2, 400))))
+        
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                self.preview_song_index = -1  # 미리듣기 초기화
+                self.state = "select_song"
+
+    def select_song_screen(self):
+        """펌프 스타일 곡 선택 화면"""
+        # 곡이 변경되었으면 미리듣기 재생
+        if self.preview_song_index != self.selected_song_index:
+            self.preview_song_index = self.selected_song_index
+            song = self.songs[self.selected_song_index]
+            song.load_music()
+            song.play_music()
+        
+        font_title = pygame.font.SysFont(None, 80)
+        font_info = pygame.font.SysFont(None, 50)
+        font_sub = pygame.font.SysFont(None, 35)
+        
+        # 현재 곡의 배경 이미지 표시
+        bg_img = self.load_song_background(self.selected_song_index)
+        self.screen.blit(bg_img, (0, 0))
+        
+        # 어두운 오버레이
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+        overlay.set_alpha(150)
+        overlay.fill((0, 0, 0))
+        self.screen.blit(overlay, (0, 0))
+        
+        # 곡 정보 박스 (중앙)
+        info_box_width = 900
+        info_box_height = 400
+        info_box_x = (SCREEN_WIDTH - info_box_width) // 2
+        info_box_y = 150
+        
+        # 반투명 박스
+        info_surface = pygame.Surface((info_box_width, info_box_height))
+        info_surface.set_alpha(200)
+        info_surface.fill((20, 20, 40))
+        self.screen.blit(info_surface, (info_box_x, info_box_y))
+        
+        # 박스 테두리
+        pygame.draw.rect(self.screen, (255, 200, 100), 
+                        (info_box_x, info_box_y, info_box_width, info_box_height), 5)
+        
+        # 현재 곡 정보
+        song = self.songs[self.selected_song_index]
+        
+        # 곡 제목
+        title = font_title.render(song.title, True, (255, 255, 100))
+        title_rect = title.get_rect(center=(SCREEN_WIDTH//2, info_box_y + 80))
+        self.screen.blit(title, title_rect)
+        
+        # 난이도 정보
+        difficulties = ["Easy", "Normal", "Hard"]
+        diff_y = info_box_y + 180
+        
+        for i, diff in enumerate(difficulties):
+            total_diff = song.get_total_difficulty(diff)
+            diff_text = font_info.render(
+                f"{diff}: ★{total_diff}", 
+                True, (100 + i*50, 255 - i*50, 100)
+            )
+            diff_rect = diff_text.get_rect(center=(SCREEN_WIDTH//2, diff_y + i * 60))
+            self.screen.blit(diff_text, diff_rect)
+        
+        # 곡 번호 표시
+        song_number = font_sub.render(
+            f"Song {self.selected_song_index + 1} / {len(self.songs)}", 
+            True, (200, 200, 200)
+        )
+        self.screen.blit(song_number, 
+                        (song_number.get_rect(center=(SCREEN_WIDTH//2, info_box_y + 360))))
+        
+        # 좌우 화살표 표시
+        arrow_font = pygame.font.SysFont(None, 100)
+        if self.selected_song_index > 0:
+            left_arrow = arrow_font.render("◄", True, (255, 255, 255))
+            self.screen.blit(left_arrow, (50, SCREEN_HEIGHT//2 - 50))
+        
+        if self.selected_song_index < len(self.songs) - 1:
+            right_arrow = arrow_font.render("►", True, (255, 255, 255))
+            self.screen.blit(right_arrow, (SCREEN_WIDTH - 120, SCREEN_HEIGHT//2 - 50))
+        
+        # 조작 안내
+        instruction = font_sub.render("◄ ► : Select Song  |  ENTER: Choose", True, (150, 255, 255))
+        self.screen.blit(instruction, 
+                        (instruction.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 50))))
+        
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    if self.selected_song_index > 0:
+                        self.selected_song_index -= 1
+                elif event.key == pygame.K_RIGHT:
+                    if self.selected_song_index < len(self.songs) - 1:
+                        self.selected_song_index += 1
+                elif event.key == pygame.K_RETURN:
+                    # 미리듣기 음악 정지
+                    pygame.mixer.music.stop()
+                    self.current_song = self.songs[self.selected_song_index]
+                    self.current_song.load_music()
+                    self.state = "select_difficulty"
+                elif event.key == pygame.K_ESCAPE:
+                    # 미리듣기 음악 정지
+                    pygame.mixer.music.stop()
+                    self.preview_song_index = -1
+                    self.state = "menu"
+
+    def select_difficulty_screen(self):
+        font_title = pygame.font.SysFont(None, 70)
+        font_diff = pygame.font.SysFont(None, 50)
+        
+        self.screen.fill((20, 20, 40))
+        
+        title = font_title.render(f"♪ {self.current_song.title}", True, (255, 200, 100))
+        self.screen.blit(title, (title.get_rect(center=(SCREEN_WIDTH//2, 80))))
+        
+        subtitle = font_diff.render("SELECT DIFFICULTY", True, (200, 200, 200))
+        self.screen.blit(subtitle, (subtitle.get_rect(center=(SCREEN_WIDTH//2, 150))))
+        
+        difficulties = ["Easy", "Normal", "Hard"]
+        colors = [(100, 255, 100), (255, 255, 100), (255, 100, 100)]
+        
+        for i, diff in enumerate(difficulties):
+            total_diff = self.current_song.get_total_difficulty(diff)
+            color = colors[i] if i == self.selected_difficulty_index else (150, 150, 150)
+            text = font_diff.render(
+                f"→ {diff} [★{total_diff}]" if i == self.selected_difficulty_index else f"  {diff} [★{total_diff}]", 
+                True, color
+            )
+            self.screen.blit(text, (text.get_rect(center=(SCREEN_WIDTH//2, 250 + i * 80))))
+        
+        instruction = font_diff.render("↑↓: Select | ENTER: Next | ESC: Back", True, (150, 150, 255))
+        self.screen.blit(instruction, (instruction.get_rect(center=(SCREEN_WIDTH//2, 600))))
+        
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.selected_difficulty_index = (self.selected_difficulty_index - 1) % 3
+                elif event.key == pygame.K_DOWN:
+                    self.selected_difficulty_index = (self.selected_difficulty_index + 1) % 3
+                elif event.key == pygame.K_RETURN:
+                    self.current_difficulty = ["Easy", "Normal", "Hard"][self.selected_difficulty_index]
+                    self.state = "select_speed"
+                elif event.key == pygame.K_ESCAPE:
+                    self.state = "select_song"
+
+    def select_speed_screen(self):
+        font_title = pygame.font.SysFont(None, 70)
+        font_speed = pygame.font.SysFont(None, 50)
+        font_desc = pygame.font.SysFont(None, 35)
+        
+        self.screen.fill((20, 20, 40))
+        
+        title = font_title.render(f"♪ {self.current_song.title}", True, (255, 200, 100))
+        self.screen.blit(title, (title.get_rect(center=(SCREEN_WIDTH//2, 80))))
+        
+        subtitle = font_speed.render("SELECT SPEED", True, (200, 200, 200))
+        self.screen.blit(subtitle, (subtitle.get_rect(center=(SCREEN_WIDTH//2, 150))))
+        
+        speeds = [1, 2, 3]
+        speed_names = ["1x (Normal)", "2x (Fast)", "3x (Ultra Fast)"]
+        colors = [(100, 255, 100), (255, 255, 100), (255, 100, 100)]
+        descriptions = [
+            "Standard speed",
+            "+50% more arrows!",
+            "+100% more arrows!!"
+        ]
+        
+        for i, (speed, name) in enumerate(zip(speeds, speed_names)):
+            color = colors[i] if i == self.selected_speed_index else (150, 150, 150)
+            
+            text = font_speed.render(
+                f"→ {name}" if i == self.selected_speed_index else f"  {name}", 
+                True, color
+            )
+            self.screen.blit(text, (text.get_rect(center=(SCREEN_WIDTH//2, 250 + i * 100))))
+            
+            desc = font_desc.render(descriptions[i], True, (180, 180, 180))
+            self.screen.blit(desc, (desc.get_rect(center=(SCREEN_WIDTH//2, 290 + i * 100))))
+        
+        instruction = font_speed.render("↑↓: Select | ENTER: Start! | ESC: Back", True, (150, 150, 255))
+        self.screen.blit(instruction, (instruction.get_rect(center=(SCREEN_WIDTH//2, 600))))
+        
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.selected_speed_index = (self.selected_speed_index - 1) % 3
+                elif event.key == pygame.K_DOWN:
+                    self.selected_speed_index = (self.selected_speed_index + 1) % 3
+                elif event.key == pygame.K_RETURN:
+                    self.current_speed = speeds[self.selected_speed_index]
+                    self.start_game()
+                elif event.key == pygame.K_ESCAPE:
+                    self.state = "select_difficulty"
+
+    def start_game(self):
+        """게임 시작 준비"""
+        self.player = Player()
+        self.arrows = []
+        self.timer = 0
+        self.spawn_counter = 0
+        self.pattern_index = 0
+        self.song_end_timer = -1
+        
+        # 패턴 생성
+        self.current_pattern = self.current_song.generate_pattern(
+            self.current_difficulty, 
+            self.current_speed
+        )
+        
+        # 배경 변경
+        self.bg = Background(self.current_song.background_image)
+        
+        # 음악 재생
+        self.current_song.play_music()
+        
+        self.state = "play"
+
+    def play_game(self):
+        self.bg.draw(self.screen)
+        self.timer += 1
+        self.spawn_counter += 1
+
+        # 화살표 생성
+        if self.pattern_index < len(self.current_pattern):
+            spawn_interval = self.current_song.get_spawn_interval(
+                self.current_difficulty, 
+                self.current_speed
+            )
+            
+            if self.spawn_counter >= spawn_interval:
+                direction = self.current_pattern[self.pattern_index]
+                speed = self.current_song.get_arrow_speed(self.current_speed)
+                self.arrows.append(Arrow(direction, speed))
+                self.pattern_index += 1
+                self.spawn_counter = 0
+        else:
+            # 모든 패턴 생성 완료, 대기 타이머 시작
+            if self.song_end_timer == -1 and len(self.arrows) == 0:
+                self.song_end_timer = 180
+
+        # 화살표 업데이트 및 그리기
+        for arrow in self.arrows[:]:
+            arrow.update()
+            arrow.draw(self.screen)
+
+        # 판정 라인 그리기 (중앙 정렬) - 화면 너비에 맞게 위치 조정
+        directions = ["left", "down", "up", "right"]
+        # 화면 중앙 기준으로 화살표 재배치
+        center_x = SCREEN_WIDTH // 2
+        positions_adjusted = {
+            "left": center_x - 150,
+            "down": center_x - 50,
+            "up": center_x + 50,
+            "right": center_x + 150
+        }
+        
+        for direction in directions:
+            x = positions_adjusted[direction]
+            y = Arrow.JUDGEMENT_LINE
+            img = self.judgement_images[direction]
+            rect = img.get_rect(center=(x, y))
+            self.screen.blit(img, rect)
+
+        # 입력 처리
+        self.player.handle_input(self.arrows)
+        self.player.check_missed_arrows(self.arrows)
+
+        # UI 그리기
+        self.draw_ui()
+
+        # HP가 0이 되면 게임 오버
+        if not self.player.is_alive:
+            self.current_song.stop_music()
+            self.state = "gameover"
+
+        # 대기 타이머 카운트다운
+        if self.song_end_timer > 0:
+            self.song_end_timer -= 1
+            if self.song_end_timer == 0:
+                self.current_song.stop_music()
+                if self.player.is_alive:
+                    self.state = "result"
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.current_song.stop_music()
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.current_song.stop_music()
+                self.state = "menu"
+
+    def draw_ui(self):
+        """게임 UI 표시"""
+        font_large = pygame.font.SysFont(None, 50)
+        font_small = pygame.font.SysFont(None, 30)
+        
+        # HP 바 - 화면 중앙 상단에 크게
+        hp_bar_width = 600
+        hp_bar_height = 40
+        hp_bar_x = (SCREEN_WIDTH - hp_bar_width) // 2
+        hp_bar_y = 20
+        
+        # HP 바 배경
+        pygame.draw.rect(self.screen, (50, 50, 50), 
+                        (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height))
+        
+        # HP 바 (색상은 HP에 따라 변화)
+        hp_percentage = self.player.hp / self.player.max_hp
+        current_hp_width = int(hp_bar_width * hp_percentage)
+        
+        if hp_percentage > 0.6:
+            hp_color = (100, 255, 100)
+        elif hp_percentage > 0.3:
+            hp_color = (255, 255, 100)
+        else:
+            hp_color = (255, 100, 100)
+        
+        pygame.draw.rect(self.screen, hp_color, 
+                        (hp_bar_x, hp_bar_y, current_hp_width, hp_bar_height))
+        
+        # HP 바 테두리
+        pygame.draw.rect(self.screen, (255, 255, 255), 
+                        (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height), 3)
+        
+        # 콤보 - 오른쪽 상단에 작게
+        if self.player.combo > 0:
+            combo_text = font_small.render(f"Combo: {self.player.combo}", True, (255, 150, 0))
+            self.screen.blit(combo_text, (SCREEN_WIDTH - 200, 20))
+        
+        # 배속 표시 - 왼쪽 상단
+        speed_text = font_small.render(f"{self.current_speed}x", True, (150, 255, 255))
+        self.screen.blit(speed_text, (20, 20))
+        
+        # 판정 표시 - 중앙
+        if self.player.judgement_timer > 0:
+            judgement_colors = {
+                "Perfect": (255, 100, 255),
+                "Great": (100, 255, 100),
+                "Good": (255, 255, 100),
+                "Miss": (255, 50, 50)
+            }
+            color = judgement_colors.get(self.player.last_judgement, (255, 255, 255))
+            judgement_text = font_large.render(self.player.last_judgement, True, color)
+            self.screen.blit(judgement_text, (judgement_text.get_rect(center=(SCREEN_WIDTH//2, 400))))
+
+    def show_result(self):
+        """결과 화면"""
+        font_title = pygame.font.SysFont(None, 80)
+        font_text = pygame.font.SysFont(None, 40)
+        
+        self.screen.fill((20, 20, 40))
+        
+        title = font_title.render("🎉 CLEAR! 🎉", True, (255, 200, 100))
+        self.screen.blit(title, (title.get_rect(center=(SCREEN_WIDTH//2, 100))))
+        
+        info = font_text.render(
+            f"{self.current_difficulty} | {self.current_speed}x Speed", 
+            True, (200, 200, 255)
+        )
+        self.screen.blit(info, (info.get_rect(center=(SCREEN_WIDTH//2, 160))))
+        
+        results = [
+            f"Final Score: {self.player.score}",
+            f"Max Combo: {self.player.max_combo}",
+            f"Accuracy: {self.player.get_accuracy():.1f}%",
+            "",
+            f"Perfect: {self.player.perfect_count}",
+            f"Great: {self.player.great_count}",
+            f"Good: {self.player.good_count}",
+            f"Miss: {self.player.miss_count}",
+        ]
+        
+        for i, line in enumerate(results):
+            text = font_text.render(line, True, (255, 255, 255))
+            self.screen.blit(text, (text.get_rect(center=(SCREEN_WIDTH//2, 230 + i * 45))))
+        
+        instruction = font_text.render("Press ENTER to continue", True, (150, 150, 255))
+        self.screen.blit(instruction, (instruction.get_rect(center=(SCREEN_WIDTH//2, 620))))
+        
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                self.state = "menu"
+    
+    def show_gameover(self):
+        """게임 오버 화면"""
+        font_title = pygame.font.SysFont(None, 100)
+        font_text = pygame.font.SysFont(None, 45)
+        
+        self.screen.fill((40, 20, 20))
+        
+        title = font_title.render("GAME OVER", True, (255, 100, 100))
+        self.screen.blit(title, (title.get_rect(center=(SCREEN_WIDTH//2, 180))))
+        
+        subtitle = font_text.render("HP depleted!", True, (255, 150, 150))
+        self.screen.blit(subtitle, (subtitle.get_rect(center=(SCREEN_WIDTH//2, 260))))
+        
+        results = [
+            f"Final Score: {self.player.score}",
+            f"Max Combo: {self.player.max_combo}",
+            f"Perfect: {self.player.perfect_count} | Great: {self.player.great_count}",
+            f"Good: {self.player.good_count} | Miss: {self.player.miss_count}",
+        ]
+        
+        for i, line in enumerate(results):
+            text = font_text.render(line, True, (255, 255, 255))
+            self.screen.blit(text, (text.get_rect(center=(SCREEN_WIDTH//2, 350 + i * 50))))
+        
+        instruction = font_text.render("Press ENTER to continue", True, (150, 150, 255))
+        self.screen.blit(instruction, (instruction.get_rect(center=(SCREEN_WIDTH//2, 600))))
+        
+        pygame.display.flip()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                self.state = "menu"
+
+    def run(self):
+        while True:
+            if self.state == "menu":
+                self.main_menu()
+            elif self.state == "select_song":
+                self.select_song_screen()
+            elif self.state == "select_difficulty":
+                self.select_difficulty_screen()
+            elif self.state == "select_speed":
+                self.select_speed_screen()
+            elif self.state == "play":
+                self.play_game()
+            elif self.state == "result":
+                self.show_result()
+            elif self.state == "gameover":
+                self.show_gameover()
+
+            self.clock.tick(60)

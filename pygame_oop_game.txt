@@ -1,0 +1,84 @@
+five_lane_racer/          ← 프로젝트 폴더
+├─ main.py                ← 실행 진입점 (Game 클래스 실행)
+├─ game.py                ← Game 클래스: 루프, 이벤트, 점수, 난이도
+├─ player.py              ← Player 클래스: 자동차 이동, 충돌 판정
+├─ enemy.py               ← Enemy(또는 Obstacle) 클래스: 장애물 이동, 충돌
+├─ background.py          ← Background 클래스: 배경/도로 표시
+└─ assets/                ← 이미지/사운드 리소스
+    ├─ player.png
+    ├─ enemy.png
+    └─ road.png
+
+🕹 Game 클래스
+역할:
+    게임 루프 관리
+    이벤트 처리 (키 입력, 종료)
+    충돌 감지
+    난이도 조절
+    점수/거리 표시
+
+핵심 속성:
+    player : Player 객체
+    obstacles : Enemy(장애물) 객체 리스트
+    distance : 게임 진행 거리
+    score : 점수
+    speed : 장애물 이동 속도 / 게임 속도
+    spawn_timer : 장애물 스폰 타이머
+    lanes : 5차선 X좌표 리스트 [x1, x2, x3, x4, x5]
+
+핵심 메서드:
+    run() : 게임 메인 루프
+    handle_events() : 키보드 입력 처리
+    update() : 플레이어/장애물 상태 업데이트, 충돌 체크, 난이도 조절
+    draw() : 배경, 플레이어, 장애물 그리기, 점수 표시
+
+🚗 Player 클래스
+
+역할:
+    자동차 이동 (좌/우 차선)
+    충돌 판정용 rect 관리
+    화면에 그리기
+
+핵심 속성:
+    lane_index : 현재 차선 (0~4)
+    x, y : 실제 좌표
+    rect : 충돌 판정용 사각형
+    image : 자동차 이미지
+
+핵심 메서드:
+    move_left() : 좌측 차선으로 이동
+    move_right() : 우측 차선으로 이동
+    update() : 위치 업데이트
+    draw(screen) : 화면에 자동차 그리기
+
+🚧 Enemy (또는 Obstacle) 클래스
+
+역할:
+    장애물 생성 및 이동
+    화면 아래로 내려가면 제거
+    충돌 판정용 rect 관리
+
+핵심 속성:
+    lane_index : 생성된 차선
+    x, y : 실제 좌표
+    rect : 충돌 판정용 사각형
+    speed : 이동 속도
+    image : 장애물 이미지
+
+핵심 메서드:
+    update() : Y좌표 이동, 화면 밖이면 제거
+    draw(screen) : 화면에 장애물 그리기
+
+🛣 Background 클래스
+
+역할:
+    도로, 차선 표시
+    배경 이미지/색상 그리기
+
+핵심 속성:
+    image : 배경 이미지 (선택)
+    color : 배경 색상
+    lane_lines : 차선 좌표 및 굵기
+
+핵심 메서드:
+    draw(screen) : 화면에 배경 및 차선 그리기
