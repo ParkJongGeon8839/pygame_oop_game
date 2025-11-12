@@ -21,7 +21,7 @@ class Game:
 
         # 20개 노래 목록
         self.songs = [
-            Song("CANON D", "music/song1.mp3", 2, "images/bg_song1.jpg"),
+            Song("CANON", "music/song1.mp3", 2, "images/bg_song1.jpg"),
             Song("Beethoven Virus", "music/song2.mp3", 3, "images/bg_song2.jpg"),
             Song("Get Up", "music/song3.mp3", 5, "images/bg_song3.jpg"),
             Song("Can Can", "music/song4.mp3", 4, "images/bg_song4.jpg"),
@@ -331,6 +331,8 @@ class Game:
         self.spawn_counter = 0
         self.pattern_index = 0
         self.song_end_timer = -1
+        self.pattern_complete = False  # 패턴 생성 완료 여부
+        self.game_start_time = pygame.time.get_ticks()  # 게임 시작 시간 기록
         
         # 패턴 생성
         self.current_pattern = self.current_song.generate_pattern(
@@ -350,9 +352,12 @@ class Game:
         self.bg.draw(self.screen)
         self.timer += 1
         self.spawn_counter += 1
-
-        # 화살표 생성
-        if self.pattern_index < len(self.current_pattern):
+        
+        # 현재 경과 시간 계산 (초 단위)
+        elapsed_time = (pygame.time.get_ticks() - self.game_start_time) / 1000.0
+        
+        # 노래 길이를 초과하지 않았고, 패턴이 남아있으면 화살표 생성
+        if elapsed_time < self.current_song.length and self.pattern_index < len(self.current_pattern):
             spawn_interval = self.current_song.get_spawn_interval(
                 self.current_difficulty, 
                 self.current_speed
@@ -365,9 +370,10 @@ class Game:
                 self.pattern_index += 1
                 self.spawn_counter = 0
         else:
-            # 모든 패턴 생성 완료, 대기 타이머 시작
-            if self.song_end_timer == -1 and len(self.arrows) == 0:
-                self.song_end_timer = 180
+            # 노래가 끝났거나 모든 패턴 생성 완료
+            if not self.pattern_complete:
+                self.pattern_complete = True
+                self.song_end_timer = 120  # 2초 대기 (60 FPS * 2)
 
         # 화살표 업데이트 및 그리기
         for arrow in self.arrows[:]:
@@ -404,8 +410,8 @@ class Game:
             self.current_song.stop_music()
             self.state = "gameover"
 
-        # 대기 타이머 카운트다운
-        if self.song_end_timer > 0:
+        # 패턴 완료 후 대기 타이머 카운트다운
+        if self.pattern_complete and self.song_end_timer > 0:
             self.song_end_timer -= 1
             if self.song_end_timer == 0:
                 self.current_song.stop_music()
