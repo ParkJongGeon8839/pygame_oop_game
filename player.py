@@ -15,13 +15,13 @@ class Player:
         self.max_hp = 100
         self.is_alive = True
         
-        # 입력 처리를 위한 이전 키 상태 (5키)
+        # 입력 처리를 위한 이전 키 상태 (5키 - 커스텀 키)
         self.prev_keys = {
-            pygame.K_LEFT: False,
-            pygame.K_DOWN: False,
-            pygame.K_SPACE: False,  # 센터
-            pygame.K_UP: False,
-            pygame.K_RIGHT: False
+            pygame.K_v: False,      # left
+            pygame.K_u: False,      # down → up 방향
+            pygame.K_h: False,      # center (스페이스바 → h)
+            pygame.K_r: False,      # up → down 방향
+            pygame.K_m: False       # right
         }
         
         # 판정 표시용
@@ -29,14 +29,14 @@ class Player:
         self.judgement_timer = 0
 
     def handle_input(self, arrows):
-        """키 입력 처리 - 한 번 누를 때만 반응 (5키) - UP/DOWN 키 교체"""
+        """키 입력 처리 - 한 번 누를 때만 반응 (커스텀 5키)"""
         keys = pygame.key.get_pressed()
         key_map = {
-            pygame.K_LEFT: "left",
-            pygame.K_DOWN: "up",      # DOWN 키 → "up" 방향
-            pygame.K_SPACE: "center",
-            pygame.K_UP: "down",      # UP 키 → "down" 방향
-            pygame.K_RIGHT: "right"
+            pygame.K_v: "left",     # V 키 → left
+            pygame.K_u: "up",       # U 키 → up 방향 (원래 DOWN 키)
+            pygame.K_h: "center",   # H 키 → center (원래 스페이스바)
+            pygame.K_r: "down",     # R 키 → down 방향 (원래 UP 키)
+            pygame.K_m: "right"     # M 키 → right
         }
         
         for key, direction in key_map.items():
