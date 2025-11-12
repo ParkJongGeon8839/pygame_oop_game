@@ -5,12 +5,20 @@ from player import Player
 from arrow import Arrow
 from song import Song
 
-SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 800  # 700 → 800으로 증가
+SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 800
 
 class Game:
     def __init__(self):
         pygame.init()
-        pygame.mixer.init()
+        
+        # pygame.mixer 초기화 실패해도 게임 계속 진행
+        try:
+            pygame.mixer.init()
+            self.sound_enabled = True
+        except:
+            print("사운드 시스템을 사용할 수 없습니다. 무음 모드로 실행합니다.")
+            self.sound_enabled = False
+        
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("DDR Game")
         self.clock = pygame.time.Clock()
@@ -43,30 +51,34 @@ class Game:
             Song("Ultimate Challenge", "music/song20.mp3", 10, "images/bg_song20.jpg"),
         ]
         
-        
-        # 판정 라인 이미지 로드 및 리사이즈 (5키) - UP/DOWN 위치 수정
-        self.judgement_images = {
-            "left": pygame.transform.scale(
-                pygame.image.load("images/game_left.png"), 
-                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
-            ),
-            "down": pygame.transform.scale(
-                pygame.image.load("images/game_up.png"),  # DOWN과 UP 교체
-                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
-            ),
-            "center": pygame.transform.scale(
-                pygame.image.load("images/game_center.png"), 
-                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
-            ),
-            "up": pygame.transform.scale(
-                pygame.image.load("images/game_down.png"),  # UP과 DOWN 교체
-                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
-            ),
-            "right": pygame.transform.scale(
-                pygame.image.load("images/game_right.png"), 
-                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
-            ),
-        }
+        # 판정 라인 이미지 로드
+        self.judgement_images = {}
+        try:
+            self.judgement_images = {
+                "left": pygame.transform.scale(
+                    pygame.image.load("images/game_left.png"), 
+                    (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+                ),
+                "down": pygame.transform.scale(
+                    pygame.image.load("images/game_up.png"),
+                    (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+                ),
+                "center": pygame.transform.scale(
+                    pygame.image.load("images/game_center.png"), 
+                    (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+                ),
+                "up": pygame.transform.scale(
+                    pygame.image.load("images/game_down.png"),
+                    (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+                ),
+                "right": pygame.transform.scale(
+                    pygame.image.load("images/game_right.png"), 
+                    (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+                ),
+            }
+        except Exception as e:
+            print(f"판정 라인 이미지 로드 실패: {e}")
+            # 기본 도형으로 대체 가능하도록 준비
         
         self.current_song = None
         self.current_difficulty = None
@@ -82,11 +94,8 @@ class Game:
         self.selected_difficulty_index = 0
         self.selected_speed_index = 0
         
-        # 곡 선택 화면용 배경 이미지 캐시
         self.song_backgrounds = {}
-        
-        # 미리듣기용 변수
-        self.preview_song_index = -1  # 현재 재생 중인 곡 인덱스
+        self.preview_song_index = -1
 
     def load_song_background(self, index):
         """곡 배경 이미지 로드 (캐싱)"""
@@ -95,7 +104,6 @@ class Game:
                 img = pygame.image.load(self.songs[index].background_image)
                 self.song_backgrounds[index] = pygame.transform.scale(img, (SCREEN_WIDTH, SCREEN_HEIGHT))
             except:
-                # 이미지 로드 실패 시 기본 배경
                 self.song_backgrounds[index] = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
                 self.song_backgrounds[index].fill((30, 30, 50))
         return self.song_backgrounds[index]
@@ -112,6 +120,15 @@ class Game:
         self.screen.blit(title, (title.get_rect(center=(SCREEN_WIDTH//2, 250))))
         self.screen.blit(subtitle, (subtitle.get_rect(center=(SCREEN_WIDTH//2, 400))))
         
+        # 사운드 상태 표시
+        if not self.sound_enabled:
+            sound_warning = pygame.font.SysFont(None, 35).render(
+                "⚠ Sound System Unavailable - Silent Mode", 
+                True, (255, 200, 100)
+            )
+            self.screen.blit(sound_warning, 
+                           (sound_warning.get_rect(center=(SCREEN_WIDTH//2, 500))))
+        
         pygame.display.flip()
 
         for event in pygame.event.get():
@@ -119,13 +136,12 @@ class Game:
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                self.preview_song_index = -1  # 미리듣기 초기화
+                self.preview_song_index = -1
                 self.state = "select_song"
 
     def select_song_screen(self):
         """펌프 스타일 곡 선택 화면"""
-        # 곡이 변경되었으면 미리듣기 재생
-        if self.preview_song_index != self.selected_song_index:
+        if self.sound_enabled and self.preview_song_index != self.selected_song_index:
             self.preview_song_index = self.selected_song_index
             song = self.songs[self.selected_song_index]
             song.load_music()
@@ -135,41 +151,33 @@ class Game:
         font_info = pygame.font.SysFont(None, 50)
         font_sub = pygame.font.SysFont(None, 35)
         
-        # 현재 곡의 배경 이미지 표시
         bg_img = self.load_song_background(self.selected_song_index)
         self.screen.blit(bg_img, (0, 0))
         
-        # 어두운 오버레이
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
         overlay.set_alpha(150)
         overlay.fill((0, 0, 0))
         self.screen.blit(overlay, (0, 0))
         
-        # 곡 정보 박스 (중앙)
         info_box_width = 900
         info_box_height = 400
         info_box_x = (SCREEN_WIDTH - info_box_width) // 2
         info_box_y = 150
         
-        # 반투명 박스
         info_surface = pygame.Surface((info_box_width, info_box_height))
         info_surface.set_alpha(200)
         info_surface.fill((20, 20, 40))
         self.screen.blit(info_surface, (info_box_x, info_box_y))
         
-        # 박스 테두리
         pygame.draw.rect(self.screen, (255, 200, 100), 
                         (info_box_x, info_box_y, info_box_width, info_box_height), 5)
         
-        # 현재 곡 정보
         song = self.songs[self.selected_song_index]
         
-        # 곡 제목
         title = font_title.render(song.title, True, (255, 255, 100))
         title_rect = title.get_rect(center=(SCREEN_WIDTH//2, info_box_y + 80))
         self.screen.blit(title, title_rect)
         
-        # 난이도 정보
         difficulties = ["Easy", "Normal", "Hard"]
         diff_y = info_box_y + 180
         
@@ -182,7 +190,6 @@ class Game:
             diff_rect = diff_text.get_rect(center=(SCREEN_WIDTH//2, diff_y + i * 60))
             self.screen.blit(diff_text, diff_rect)
         
-        # 곡 번호 표시
         song_number = font_sub.render(
             f"Song {self.selected_song_index + 1} / {len(self.songs)}", 
             True, (200, 200, 200)
@@ -190,7 +197,6 @@ class Game:
         self.screen.blit(song_number, 
                         (song_number.get_rect(center=(SCREEN_WIDTH//2, info_box_y + 360))))
         
-        # 좌우 화살표 표시
         arrow_font = pygame.font.SysFont(None, 100)
         if self.selected_song_index > 0:
             left_arrow = arrow_font.render("◄", True, (255, 255, 255))
@@ -200,8 +206,7 @@ class Game:
             right_arrow = arrow_font.render("►", True, (255, 255, 255))
             self.screen.blit(right_arrow, (SCREEN_WIDTH - 120, SCREEN_HEIGHT//2 - 50))
         
-        # 조작 안내
-        instruction = font_sub.render("◄ ► : Select Song  |  ENTER: Choose", True, (150, 255, 255))
+        instruction = font_sub.render("◄ ►: Select Song  |  ENTER: Choose", True, (150, 255, 255))
         self.screen.blit(instruction, 
                         (instruction.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 50))))
         
@@ -219,14 +224,14 @@ class Game:
                     if self.selected_song_index < len(self.songs) - 1:
                         self.selected_song_index += 1
                 elif event.key == pygame.K_RETURN:
-                    # 미리듣기 음악 정지
-                    pygame.mixer.music.stop()
+                    if self.sound_enabled:
+                        pygame.mixer.music.stop()
                     self.current_song = self.songs[self.selected_song_index]
                     self.current_song.load_music()
                     self.state = "select_difficulty"
                 elif event.key == pygame.K_ESCAPE:
-                    # 미리듣기 음악 정지
-                    pygame.mixer.music.stop()
+                    if self.sound_enabled:
+                        pygame.mixer.music.stop()
                     self.preview_song_index = -1
                     self.state = "menu"
 
@@ -338,18 +343,18 @@ class Game:
         self.song_end_timer = -1
         self.pattern_complete = False
         self.game_start_time = pygame.time.get_ticks()
-        self.game_started = False  # 게임 시작 여부 (첫 화살표 생성 후 True)
+        self.game_started = False
         
-        # 패턴 생성
         self.current_pattern = self.current_song.generate_pattern(
             self.current_difficulty, 
             self.current_speed
         )
         
-        # 배경 변경
-        self.bg = Background(self.current_song.background_image)
+        try:
+            self.bg = Background(self.current_song.background_image)
+        except:
+            self.bg = Background("images/background.jpg")
         
-        # 음악 재생
         self.current_song.play_music()
         
         self.state = "play"
@@ -359,10 +364,8 @@ class Game:
         self.timer += 1
         self.spawn_counter += 1
         
-        # 현재 경과 시간 계산 (초 단위)
         elapsed_time = (pygame.time.get_ticks() - self.game_start_time) / 1000.0
         
-        # 노래 끝나기 3초 전까지만 화살표 생성
         if elapsed_time < (self.current_song.length - 3.0) and self.pattern_index < len(self.current_pattern):
             spawn_interval = self.current_song.get_spawn_interval(
                 self.current_difficulty, 
@@ -370,10 +373,8 @@ class Game:
             )
             
             if self.spawn_counter >= spawn_interval:
-                # 패턴에서 화살표 가져오기 (리스트일 수도 있음 - 동시타)
                 pattern = self.current_pattern[self.pattern_index]
                 
-                # 동시타 처리
                 if isinstance(pattern, list):
                     for direction in pattern:
                         speed = self.current_song.get_arrow_speed(self.current_speed)
@@ -385,44 +386,37 @@ class Game:
                 self.pattern_index += 1
                 self.spawn_counter = 0
                 
-                # 첫 화살표 생성 시 게임 시작으로 간주
                 if not self.game_started:
                     self.game_started = True
         else:
-            # 노래가 끝났거나 모든 패턴 생성 완료
             if not self.pattern_complete:
                 self.pattern_complete = True
-                self.song_end_timer = 120  # 2초 대기
+                self.song_end_timer = 120
 
-        # 화살표 업데이트 및 그리기
         for arrow in self.arrows[:]:
             arrow.update()
             arrow.draw(self.screen)
 
-        # 판정 라인 그리기 (5키)
         directions = ["left", "down", "center", "up", "right"]
         
         for direction in directions:
             x = Arrow.positions[direction]
             y = Arrow.JUDGEMENT_LINE
-            img = self.judgement_images[direction]
-            rect = img.get_rect(center=(x, y))
-            self.screen.blit(img, rect)
+            if direction in self.judgement_images:
+                img = self.judgement_images[direction]
+                rect = img.get_rect(center=(x, y))
+                self.screen.blit(img, rect)
 
-        # 입력 처리 (게임 시작 후에만)
         if self.game_started:
             self.player.handle_input(self.arrows)
             self.player.check_missed_arrows(self.arrows)
 
-        # UI 그리기
         self.draw_ui()
 
-        # HP가 0이 되면 게임 오버
         if not self.player.is_alive:
             self.current_song.stop_music()
             self.state = "gameover"
 
-        # 패턴 완료 후 대기 타이머 카운트다운
         if self.pattern_complete and self.song_end_timer > 0:
             self.song_end_timer -= 1
             if self.song_end_timer == 0:
@@ -446,17 +440,14 @@ class Game:
         font_large = pygame.font.SysFont(None, 50)
         font_small = pygame.font.SysFont(None, 30)
         
-        # HP 바 - 화면 상단에 여유있게 배치
         hp_bar_width = 600
         hp_bar_height = 40
         hp_bar_x = (SCREEN_WIDTH - hp_bar_width) // 2
-        hp_bar_y = 20  # 상단으로 복귀
+        hp_bar_y = 20
         
-        # HP 바 배경
         pygame.draw.rect(self.screen, (50, 50, 50), 
                         (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height))
         
-        # HP 바 (색상은 HP에 따라 변화)
         hp_percentage = self.player.hp / self.player.max_hp
         current_hp_width = int(hp_bar_width * hp_percentage)
         
@@ -470,20 +461,16 @@ class Game:
         pygame.draw.rect(self.screen, hp_color, 
                         (hp_bar_x, hp_bar_y, current_hp_width, hp_bar_height))
         
-        # HP 바 테두리
         pygame.draw.rect(self.screen, (255, 255, 255), 
                         (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height), 3)
         
-        # 콤보 - 오른쪽 상단
         if self.player.combo > 0:
             combo_text = font_small.render(f"Combo: {self.player.combo}", True, (255, 150, 0))
             self.screen.blit(combo_text, (SCREEN_WIDTH - 200, 20))
         
-        # 배속 표시 - 왼쪽 상단
         speed_text = font_small.render(f"{self.current_speed}x", True, (150, 255, 255))
         self.screen.blit(speed_text, (20, 20))
         
-        # 판정 표시 - 중앙
         if self.player.judgement_timer > 0:
             judgement_colors = {
                 "Perfect": (255, 100, 255),
