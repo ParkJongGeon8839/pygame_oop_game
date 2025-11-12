@@ -21,44 +21,49 @@ class Game:
 
         # 20개 노래 목록
         self.songs = [
-            Song("CANON", "music/song1.mp3", 2, "images/bg_song1.jpg"),
-            Song("Beethoven Virus", "music/song2.mp3", 3, "images/bg_song2.jpg"),
-            Song("Get Up", "music/song3.mp3", 5, "images/bg_song3.jpg"),
-            Song("Can Can", "music/song4.mp3", 4, "images/bg_song4.jpg"),
-            Song("Legends Never Die", "music/song5.mp3", 3, "images/bg_song5.jpg"),
-            Song("Dynamite", "music/song6.mp3", 4, "images/bg_song6.jpg"),
-            Song("LOVE DIVE", "music/song7.mp3", 5, "images/bg_song7.jpg"),
-            Song("Kitsch", "music/song8.mp3", 6, "images/bg_song8.jpg"),
-            Song("Whiplash", "music/song9.mp3", 7, "images/bg_song9.jpg"),
-            Song("Spicy", "music/song10.mp3", 8, "images/bg_song10.jpg"),
-            Song("It Was Summer", "music/song11.mp3", 3, "images/bg_song11.jpg"),
-            Song("Silver Scrapes", "music/song12.mp3", 4, "images/bg_song12.jpg"),
-            Song("Last Christmas", "music/song13.mp3", 5, "images/bg_song13.jpg"),
-            Song("Love Never Felt So Good", "music/song14.mp3", 4, "images/bg_song14.jpg"),
-            Song("HAPPY", "music/song15.mp3", 6, "images/bg_song15.jpg"),
-            Song("Because It’s Christmas", "music/song16.mp3", 7, "images/bg_song16.jpg"),
-            Song("Winter Confession", "music/song17.mp3", 5, "images/bg_song17.jpg"),
-            Song("Thank You for Being Born", "music/song18.mp3", 8, "images/bg_song18.jpg"),
-            Song("Soda Pop", "music/song19.mp3", 9, "images/bg_song19.jpg"),
-            Song("HOME SWEET HOME", "music/song20.mp3", 10, "images/bg_song20.jpg"),
+            Song("Energetic Beat", "music/song1.mp3", 2, "images/bg_song1.jpg"),
+            Song("Cyber Dance", "music/song2.mp3", 3, "images/bg_song2.jpg"),
+            Song("Final Boss", "music/song3.mp3", 5, "images/bg_song3.jpg"),
+            Song("Electric Storm", "music/song4.mp3", 4, "images/bg_song4.jpg"),
+            Song("Neon Dreams", "music/song5.mp3", 3, "images/bg_song5.jpg"),
+            Song("Techno Vibes", "music/song6.mp3", 4, "images/bg_song6.jpg"),
+            Song("Digital Paradise", "music/song7.mp3", 5, "images/bg_song7.jpg"),
+            Song("Bass Drop", "music/song8.mp3", 6, "images/bg_song8.jpg"),
+            Song("Rhythm Master", "music/song9.mp3", 7, "images/bg_song9.jpg"),
+            Song("Hyperspeed", "music/song10.mp3", 8, "images/bg_song10.jpg"),
+            Song("Starlight", "music/song11.mp3", 3, "images/bg_song11.jpg"),
+            Song("Ocean Wave", "music/song12.mp3", 4, "images/bg_song12.jpg"),
+            Song("Thunder Strike", "music/song13.mp3", 5, "images/bg_song13.jpg"),
+            Song("Crystal Clear", "music/song14.mp3", 4, "images/bg_song14.jpg"),
+            Song("Dark Matter", "music/song15.mp3", 6, "images/bg_song15.jpg"),
+            Song("Solar Flare", "music/song16.mp3", 7, "images/bg_song16.jpg"),
+            Song("Cosmic Dance", "music/song17.mp3", 5, "images/bg_song17.jpg"),
+            Song("Infinity Loop", "music/song18.mp3", 8, "images/bg_song18.jpg"),
+            Song("Time Warp", "music/song19.mp3", 9, "images/bg_song19.jpg"),
+            Song("Ultimate Challenge", "music/song20.mp3", 10, "images/bg_song20.jpg"),
         ]
         
-        # 판정 라인 이미지 로드 및 리사이즈
+        
+        # 판정 라인 이미지 로드 및 리사이즈 (5키)
         self.judgement_images = {
             "left": pygame.transform.scale(
-                pygame.image.load("images/left.png"), 
+                pygame.image.load("images/game_left.png"), 
                 (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
             ),
             "down": pygame.transform.scale(
-                pygame.image.load("images/down.png"), 
+                pygame.image.load("images/game_down.png"), 
+                (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
+            ),
+            "center": pygame.transform.scale(
+                pygame.image.load("images/game_center.png"), 
                 (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
             ),
             "up": pygame.transform.scale(
-                pygame.image.load("images/up.png"), 
+                pygame.image.load("images/game_up.png"), 
                 (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
             ),
             "right": pygame.transform.scale(
-                pygame.image.load("images/right.png"), 
+                pygame.image.load("images/game_right.png"), 
                 (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
             ),
         }
@@ -331,8 +336,9 @@ class Game:
         self.spawn_counter = 0
         self.pattern_index = 0
         self.song_end_timer = -1
-        self.pattern_complete = False  # 패턴 생성 완료 여부
-        self.game_start_time = pygame.time.get_ticks()  # 게임 시작 시간 기록
+        self.pattern_complete = False
+        self.game_start_time = pygame.time.get_ticks()
+        self.game_started = False  # 게임 시작 여부 (첫 화살표 생성 후 True)
         
         # 패턴 생성
         self.current_pattern = self.current_song.generate_pattern(
@@ -364,43 +370,49 @@ class Game:
             )
             
             if self.spawn_counter >= spawn_interval:
-                direction = self.current_pattern[self.pattern_index]
-                speed = self.current_song.get_arrow_speed(self.current_speed)
-                self.arrows.append(Arrow(direction, speed))
+                # 패턴에서 화살표 가져오기 (리스트일 수도 있음 - 동시타)
+                pattern = self.current_pattern[self.pattern_index]
+                
+                # 동시타 처리
+                if isinstance(pattern, list):
+                    for direction in pattern:
+                        speed = self.current_song.get_arrow_speed(self.current_speed)
+                        self.arrows.append(Arrow(direction, speed))
+                else:
+                    speed = self.current_song.get_arrow_speed(self.current_speed)
+                    self.arrows.append(Arrow(pattern, speed))
+                
                 self.pattern_index += 1
                 self.spawn_counter = 0
+                
+                # 첫 화살표 생성 시 게임 시작으로 간주
+                if not self.game_started:
+                    self.game_started = True
         else:
             # 노래가 끝났거나 모든 패턴 생성 완료
             if not self.pattern_complete:
                 self.pattern_complete = True
-                self.song_end_timer = 120  # 2초 대기 (60 FPS * 2)
+                self.song_end_timer = 120  # 2초 대기
 
         # 화살표 업데이트 및 그리기
         for arrow in self.arrows[:]:
             arrow.update()
             arrow.draw(self.screen)
 
-        # 판정 라인 그리기 (중앙 정렬) - 화면 너비에 맞게 위치 조정
-        directions = ["left", "down", "up", "right"]
-        # 화면 중앙 기준으로 화살표 재배치
-        center_x = SCREEN_WIDTH // 2
-        positions_adjusted = {
-            "left": center_x - 150,
-            "down": center_x - 50,
-            "up": center_x + 50,
-            "right": center_x + 150
-        }
+        # 판정 라인 그리기 (5키)
+        directions = ["left", "down", "center", "up", "right"]
         
         for direction in directions:
-            x = positions_adjusted[direction]
+            x = Arrow.positions[direction]
             y = Arrow.JUDGEMENT_LINE
             img = self.judgement_images[direction]
             rect = img.get_rect(center=(x, y))
             self.screen.blit(img, rect)
 
-        # 입력 처리
-        self.player.handle_input(self.arrows)
-        self.player.check_missed_arrows(self.arrows)
+        # 입력 처리 (게임 시작 후에만)
+        if self.game_started:
+            self.player.handle_input(self.arrows)
+            self.player.check_missed_arrows(self.arrows)
 
         # UI 그리기
         self.draw_ui()
