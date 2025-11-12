@@ -5,7 +5,7 @@ from player import Player
 from arrow import Arrow
 from song import Song
 
-SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 700
+SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 800  # 700 → 800으로 증가
 
 class Game:
     def __init__(self):
@@ -362,8 +362,8 @@ class Game:
         # 현재 경과 시간 계산 (초 단위)
         elapsed_time = (pygame.time.get_ticks() - self.game_start_time) / 1000.0
         
-        # 노래 길이를 초과하지 않았고, 패턴이 남아있으면 화살표 생성
-        if elapsed_time < self.current_song.length and self.pattern_index < len(self.current_pattern):
+        # 노래 끝나기 3초 전까지만 화살표 생성
+        if elapsed_time < (self.current_song.length - 3.0) and self.pattern_index < len(self.current_pattern):
             spawn_interval = self.current_song.get_spawn_interval(
                 self.current_difficulty, 
                 self.current_speed
@@ -446,11 +446,11 @@ class Game:
         font_large = pygame.font.SysFont(None, 50)
         font_small = pygame.font.SysFont(None, 30)
         
-        # HP 바 - 화면 중앙 상단에 크게
+        # HP 바 - 화면 상단에 여유있게 배치
         hp_bar_width = 600
         hp_bar_height = 40
         hp_bar_x = (SCREEN_WIDTH - hp_bar_width) // 2
-        hp_bar_y = 20
+        hp_bar_y = 20  # 상단으로 복귀
         
         # HP 바 배경
         pygame.draw.rect(self.screen, (50, 50, 50), 
@@ -474,7 +474,7 @@ class Game:
         pygame.draw.rect(self.screen, (255, 255, 255), 
                         (hp_bar_x, hp_bar_y, hp_bar_width, hp_bar_height), 3)
         
-        # 콤보 - 오른쪽 상단에 작게
+        # 콤보 - 오른쪽 상단
         if self.player.combo > 0:
             combo_text = font_small.render(f"Combo: {self.player.combo}", True, (255, 150, 0))
             self.screen.blit(combo_text, (SCREEN_WIDTH - 200, 20))

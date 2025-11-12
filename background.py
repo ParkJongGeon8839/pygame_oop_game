@@ -1,6 +1,6 @@
 import pygame
 
-SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 700
+SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 800  # 700 → 800으로 증가
 
 class Background:
     def __init__(self, image_path):

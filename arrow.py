@@ -4,8 +4,8 @@ class Arrow:
     # 클래스 변수는 한 번만 로드
     arrow_images = None
     
-    # 판정 라인 위치 (위쪽으로 더 올림)
-    JUDGEMENT_LINE = 80
+    # 판정 라인 위치 (위쪽 - 화면 높이 800 기준)
+    JUDGEMENT_LINE = 120
     
     # 화살표 크기 (조금 작게)
     ARROW_SIZE = 100
@@ -53,8 +53,8 @@ class Arrow:
         self.speed = speed
         self.hit = False
         
-        # 화면 아래에서 시작
-        self.rect = self.image.get_rect(center=(Arrow.positions[direction], 750))
+        # 화면 아래에서 시작 (y=850, 화면 높이 800 기준)
+        self.rect = self.image.get_rect(center=(Arrow.positions[direction], 850))
 
     def update(self):
         # 위로 이동
