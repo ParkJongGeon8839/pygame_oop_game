@@ -29,13 +29,13 @@ class Player:
         self.judgement_timer = 0
 
     def handle_input(self, arrows):
-        """키 입력 처리 - 한 번 누를 때만 반응 (5키)"""
+        """키 입력 처리 - 한 번 누를 때만 반응 (5키) - UP/DOWN 키 교체"""
         keys = pygame.key.get_pressed()
         key_map = {
             pygame.K_LEFT: "left",
-            pygame.K_DOWN: "down",
+            pygame.K_DOWN: "up",      # DOWN 키 → "up" 방향
             pygame.K_SPACE: "center",
-            pygame.K_UP: "up",
+            pygame.K_UP: "down",      # UP 키 → "down" 방향
             pygame.K_RIGHT: "right"
         }
         

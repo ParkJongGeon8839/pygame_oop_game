@@ -4,8 +4,8 @@ class Arrow:
     # 클래스 변수는 한 번만 로드
     arrow_images = None
     
-    # 판정 라인 위치 (위쪽)
-    JUDGEMENT_LINE = 100
+    # 판정 라인 위치 (위쪽으로 더 올림)
+    JUDGEMENT_LINE = 80
     
     # 화살표 크기 (조금 작게)
     ARROW_SIZE = 100
