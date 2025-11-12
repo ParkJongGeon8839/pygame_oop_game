@@ -84,7 +84,7 @@ class Song:
         return self.base_difficulty + boost
     
     def generate_pattern(self, difficulty_level, speed_level):
-        """노래 길이 기반 패턴 생성"""
+        """다양한 패턴 생성 (계단, 동시타, 연타 등)"""
         total_diff = self.get_total_difficulty(difficulty_level)
         
         # 노래 길이에 따라 화살표 개수 계산
@@ -98,20 +98,58 @@ class Song:
         arrow_count = int(base_arrows * speed_increase * density_increase)
         
         patterns = []
-        directions = ["left", "down", "up", "right"]
+        directions = ["left", "down", "center", "up", "right"]
         
         i = 0
         while i < arrow_count:
-            # 연속 패턴 또는 단일 노트
-            consecutive_chance = 0.2 + (total_diff * 0.05) + (speed_level * 0.1)
+            pattern_type = random.random()
             
-            if random.random() < consecutive_chance:
+            # 1. 계단 패턴 (15% 확률)
+            if pattern_type < 0.15 and total_diff >= 3:
+                # 오른쪽 계단 또는 왼쪽 계단
+                if random.random() < 0.5:
+                    stair = ["left", "down", "center", "up", "right"]
+                else:
+                    stair = ["right", "up", "center", "down", "left"]
+                
+                for step in stair:
+                    if i < arrow_count:
+                        patterns.append(step)
+                        i += 1
+            
+            # 2. 동시타 (2~3개) (20% 확률, 난이도 4 이상)
+            elif pattern_type < 0.35 and total_diff >= 4:
+                combo_count = random.randint(2, 3)
+                combo = random.sample(directions, combo_count)
+                patterns.append(combo)  # 리스트로 추가 (동시타)
+                i += 1
+            
+            # 3. 연타 패턴 (같은 키 반복) (15% 확률)
+            elif pattern_type < 0.50:
                 direction = random.choice(directions)
-                repeat_count = random.randint(2, min(3 + speed_level, 6))
+                repeat_count = random.randint(2, min(4, 2 + total_diff // 2))
                 for _ in range(repeat_count):
                     if i < arrow_count:
                         patterns.append(direction)
                         i += 1
+            
+            # 4. 지그재그 패턴 (좌우 교차) (10% 확률)
+            elif pattern_type < 0.60 and total_diff >= 3:
+                zigzag = ["left", "right", "left", "right"]
+                for step in zigzag:
+                    if i < arrow_count:
+                        patterns.append(step)
+                        i += 1
+            
+            # 5. 센터 중심 패턴 (10% 확률)
+            elif pattern_type < 0.70:
+                center_pattern = ["center", random.choice(["left", "right"]), "center", random.choice(["down", "up"])]
+                for step in center_pattern:
+                    if i < arrow_count:
+                        patterns.append(step)
+                        i += 1
+            
+            # 6. 일반 랜덤 (30% 확률)
             else:
                 patterns.append(random.choice(directions))
                 i += 1
