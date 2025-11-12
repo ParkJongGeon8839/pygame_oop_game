@@ -7,8 +7,8 @@ class Arrow:
     # 판정 라인 위치 (위쪽)
     JUDGEMENT_LINE = 100
     
-    # 화살표 크기
-    ARROW_SIZE = 130
+    # 화살표 크기 (조금 작게)
+    ARROW_SIZE = 100
     
     # 화면 중앙 기준으로 5키 위치 설정 (1200x700 기준)
     positions = {
@@ -21,7 +21,7 @@ class Arrow:
 
     @classmethod
     def load_images(cls):
-        """이미지 한 번만 로드 및 리사이즈"""
+        """이미지 한 번만 로드 및 리사이즈 - UP/DOWN 교체"""
         if cls.arrow_images is None:
             cls.arrow_images = {
                 "left": pygame.transform.scale(
@@ -29,7 +29,7 @@ class Arrow:
                     (cls.ARROW_SIZE, cls.ARROW_SIZE)
                 ),
                 "down": pygame.transform.scale(
-                    pygame.image.load("images/bg_down.png"), 
+                    pygame.image.load("images/bg_up.png"),  # DOWN과 UP 교체
                     (cls.ARROW_SIZE, cls.ARROW_SIZE)
                 ),
                 "center": pygame.transform.scale(
@@ -37,7 +37,7 @@ class Arrow:
                     (cls.ARROW_SIZE, cls.ARROW_SIZE)
                 ),
                 "up": pygame.transform.scale(
-                    pygame.image.load("images/bg_up.png"), 
+                    pygame.image.load("images/bg_down.png"),  # UP과 DOWN 교체
                     (cls.ARROW_SIZE, cls.ARROW_SIZE)
                 ),
                 "right": pygame.transform.scale(

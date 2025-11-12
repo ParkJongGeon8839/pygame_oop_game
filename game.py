@@ -44,14 +44,14 @@ class Game:
         ]
         
         
-        # 판정 라인 이미지 로드 및 리사이즈 (5키)
+        # 판정 라인 이미지 로드 및 리사이즈 (5키) - UP/DOWN 위치 수정
         self.judgement_images = {
             "left": pygame.transform.scale(
                 pygame.image.load("images/game_left.png"), 
                 (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
             ),
             "down": pygame.transform.scale(
-                pygame.image.load("images/game_down.png"), 
+                pygame.image.load("images/game_up.png"),  # DOWN과 UP 교체
                 (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
             ),
             "center": pygame.transform.scale(
@@ -59,7 +59,7 @@ class Game:
                 (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
             ),
             "up": pygame.transform.scale(
-                pygame.image.load("images/game_up.png"), 
+                pygame.image.load("images/game_down.png"),  # UP과 DOWN 교체
                 (Arrow.ARROW_SIZE, Arrow.ARROW_SIZE)
             ),
             "right": pygame.transform.scale(
